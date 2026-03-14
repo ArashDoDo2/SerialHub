@@ -50,6 +50,8 @@ The bootstrap script is designed for Debian and Ubuntu style systems and will:
 
 By default it bootstraps the backend in `development` mode so local auth works immediately for first-time testing.
 
+During interactive runs, the script prompts for the public IP or hostname and offers the detected server address as the default.
+
 To force a specific public hostname or domain:
 
 ```bash

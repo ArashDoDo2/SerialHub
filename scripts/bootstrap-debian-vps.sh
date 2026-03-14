@@ -18,22 +18,6 @@ FRONTEND_DIR="${REPO_DIR}/packages/frontend"
 BACKEND_ENV_FILE="${BACKEND_DIR}/.env"
 APP_MODE="${APP_MODE:-development}"
 
-PUBLIC_HOST="${PUBLIC_HOST:-}"
-if [[ -z "${PUBLIC_HOST}" ]]; then
-  PUBLIC_HOST="$(hostname -I 2>/dev/null | awk '{print $1}')"
-fi
-if [[ -z "${PUBLIC_HOST}" ]]; then
-  PUBLIC_HOST="127.0.0.1"
-fi
-
-if [[ "${PUBLIC_HOST}" =~ ^https?:// ]]; then
-  PUBLIC_BASE_URL="${PUBLIC_HOST}"
-else
-  PUBLIC_BASE_URL="http://${PUBLIC_HOST}"
-fi
-
-FRONTEND_PUBLIC_URL="${FRONTEND_URL:-${PUBLIC_BASE_URL}:3000}"
-BACKEND_PUBLIC_URL="${BACKEND_URL:-${PUBLIC_BASE_URL}:3001}"
 LOCAL_AUTH_ENABLED_VALUE="${LOCAL_AUTH_ENABLED:-}"
 if [[ -z "${LOCAL_AUTH_ENABLED_VALUE}" ]]; then
   if [[ "${APP_MODE}" == "development" ]]; then
@@ -61,6 +45,24 @@ upsert_env() {
   fi
 }
 
+detect_default_public_host() {
+  local detected_host=""
+
+  if command -v curl >/dev/null 2>&1; then
+    detected_host="$(curl -fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)"
+  fi
+
+  if [[ -z "${detected_host}" ]]; then
+    detected_host="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  fi
+
+  if [[ -z "${detected_host}" ]]; then
+    detected_host="127.0.0.1"
+  fi
+
+  printf '%s' "${detected_host}"
+}
+
 echo "==> Installing required system packages"
 apt update
 apt install -y ca-certificates gnupg git python3 build-essential gcc g++ make curl
@@ -74,6 +76,27 @@ print(secrets.token_urlsafe(48))
 PY
 )"
 fi
+
+PUBLIC_HOST="${PUBLIC_HOST:-}"
+if [[ -z "${PUBLIC_HOST}" ]]; then
+  DETECTED_PUBLIC_HOST="$(detect_default_public_host)"
+
+  if [[ -t 0 ]]; then
+    read -r -p "Public IP or hostname for browser access [${DETECTED_PUBLIC_HOST}]: " PUBLIC_HOST_INPUT
+    PUBLIC_HOST="${PUBLIC_HOST_INPUT:-${DETECTED_PUBLIC_HOST}}"
+  else
+    PUBLIC_HOST="${DETECTED_PUBLIC_HOST}"
+  fi
+fi
+
+if [[ "${PUBLIC_HOST}" =~ ^https?:// ]]; then
+  PUBLIC_BASE_URL="${PUBLIC_HOST}"
+else
+  PUBLIC_BASE_URL="http://${PUBLIC_HOST}"
+fi
+
+FRONTEND_PUBLIC_URL="${FRONTEND_URL:-${PUBLIC_BASE_URL}:3000}"
+BACKEND_PUBLIC_URL="${BACKEND_URL:-${PUBLIC_BASE_URL}:3001}"
 
 NODE_MAJOR=""
 if command -v node >/dev/null 2>&1; then

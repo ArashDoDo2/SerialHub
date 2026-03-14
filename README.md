@@ -139,6 +139,8 @@ The script:
 
 It defaults to `APP_MODE=development`, which is useful for first-time VPS bring-up and enables local auth by default.
 
+During interactive runs, the script asks for the public IP or hostname that browsers will use to reach the VPS. It shows the detected server address as the default, so pressing Enter accepts it.
+
 You can override the detected public host when bootstrapping:
 
 ```bash
