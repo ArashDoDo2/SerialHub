@@ -48,10 +48,18 @@ The bootstrap script is designed for Debian and Ubuntu style systems and will:
 - create `packages/backend/.env`
 - start `serialhub-backend` and `serialhub-frontend` with PM2
 
+By default it bootstraps the backend in `development` mode so local auth works immediately for first-time testing.
+
 To force a specific public hostname or domain:
 
 ```bash
 PUBLIC_HOST=your.domain.example bash scripts/bootstrap-debian-vps.sh
+```
+
+To switch the bootstrap to a production-oriented backend configuration:
+
+```bash
+APP_MODE=production LOCAL_AUTH_ENABLED=false bash scripts/bootstrap-debian-vps.sh
 ```
 
 After bootstrap:

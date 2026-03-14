@@ -134,13 +134,21 @@ The script:
 - installs backend and frontend package dependencies
 - builds the backend
 - builds and stages the standalone frontend
-- creates a production backend `.env`
+- creates a backend `.env`
 - starts both services in the background with PM2
+
+It defaults to `APP_MODE=development`, which is useful for first-time VPS bring-up and enables local auth by default.
 
 You can override the detected public host when bootstrapping:
 
 ```bash
 PUBLIC_HOST=your.domain.example bash scripts/bootstrap-debian-vps.sh
+```
+
+For a production-oriented bootstrap:
+
+```bash
+APP_MODE=production LOCAL_AUTH_ENABLED=false bash scripts/bootstrap-debian-vps.sh
 ```
 
 ## Current Platform Notes

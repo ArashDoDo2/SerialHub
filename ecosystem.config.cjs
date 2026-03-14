@@ -4,14 +4,12 @@ module.exports = {
       name: 'serialhub-backend',
       cwd: './packages/backend',
       script: './dist/server.js',
-      env: {
-        NODE_ENV: 'production',
-      },
     },
     {
       name: 'serialhub-frontend',
-      cwd: './packages/frontend/.next/standalone',
-      script: './server.js',
+      cwd: '.',
+      script: './scripts/start-frontend-standalone.sh',
+      interpreter: 'bash',
       env: {
         NODE_ENV: 'production',
         PORT: '3000',

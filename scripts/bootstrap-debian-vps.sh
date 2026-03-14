@@ -16,6 +16,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="${REPO_DIR}/packages/backend"
 FRONTEND_DIR="${REPO_DIR}/packages/frontend"
 BACKEND_ENV_FILE="${BACKEND_DIR}/.env"
+APP_MODE="${APP_MODE:-development}"
 
 PUBLIC_HOST="${PUBLIC_HOST:-}"
 if [[ -z "${PUBLIC_HOST}" ]]; then
@@ -38,6 +39,17 @@ import secrets
 print(secrets.token_urlsafe(48))
 PY
 )}"
+LOCAL_AUTH_ENABLED_VALUE="${LOCAL_AUTH_ENABLED:-}"
+if [[ -z "${LOCAL_AUTH_ENABLED_VALUE}" ]]; then
+  if [[ "${APP_MODE}" == "development" ]]; then
+    LOCAL_AUTH_ENABLED_VALUE="true"
+  else
+    LOCAL_AUTH_ENABLED_VALUE="false"
+  fi
+fi
+LOCAL_AUTH_EMAIL_VALUE="${LOCAL_AUTH_EMAIL:-master@serialhub.local}"
+LOCAL_AUTH_PASSWORD_VALUE="${LOCAL_AUTH_PASSWORD:-master123456}"
+LOCAL_AUTH_NAME_VALUE="${LOCAL_AUTH_NAME:-Local Master}"
 
 upsert_env() {
   local key="$1"
@@ -78,13 +90,27 @@ echo "==> Preparing backend directories"
 mkdir -p "${BACKEND_DIR}/data" "${BACKEND_DIR}/logs"
 
 echo "==> Writing backend environment file"
-upsert_env "NODE_ENV" "production"
+upsert_env "NODE_ENV" "${APP_MODE}"
 upsert_env "PORT" "3001"
 upsert_env "DATABASE_PATH" "./data/serialhub.db"
 upsert_env "SESSION_SECRET" "${SESSION_SECRET_VALUE}"
 upsert_env "FRONTEND_URL" "${FRONTEND_PUBLIC_URL}"
 upsert_env "BACKEND_URL" "${BACKEND_PUBLIC_URL}"
 upsert_env "TRUST_PROXY" "false"
+upsert_env "LOCAL_AUTH_ENABLED" "${LOCAL_AUTH_ENABLED_VALUE}"
+upsert_env "LOCAL_AUTH_EMAIL" "${LOCAL_AUTH_EMAIL_VALUE}"
+upsert_env "LOCAL_AUTH_PASSWORD" "${LOCAL_AUTH_PASSWORD_VALUE}"
+upsert_env "LOCAL_AUTH_NAME" "${LOCAL_AUTH_NAME_VALUE}"
+
+if [[ -n "${GOOGLE_CLIENT_ID:-}" ]]; then
+  upsert_env "GOOGLE_CLIENT_ID" "${GOOGLE_CLIENT_ID}"
+fi
+if [[ -n "${GOOGLE_CLIENT_SECRET:-}" ]]; then
+  upsert_env "GOOGLE_CLIENT_SECRET" "${GOOGLE_CLIENT_SECRET}"
+fi
+if [[ -n "${GOOGLE_CALLBACK_URL:-}" ]]; then
+  upsert_env "GOOGLE_CALLBACK_URL" "${GOOGLE_CALLBACK_URL}"
+fi
 
 echo "==> Installing project dependencies"
 cd "${REPO_DIR}"
@@ -98,14 +124,24 @@ echo "==> Building backend"
 echo "==> Building frontend standalone output"
 (cd "${FRONTEND_DIR}" && BACKEND_URL="${BACKEND_PUBLIC_URL}" npm run build)
 
-echo "==> Staging standalone frontend assets"
-mkdir -p "${FRONTEND_DIR}/.next/standalone/.next"
-rm -rf "${FRONTEND_DIR}/.next/standalone/.next/static"
-cp -R "${FRONTEND_DIR}/.next/static" "${FRONTEND_DIR}/.next/standalone/.next/static"
+FRONTEND_STANDALONE_DIR=""
+if [[ -f "${FRONTEND_DIR}/.next/standalone/server.js" ]]; then
+  FRONTEND_STANDALONE_DIR="${FRONTEND_DIR}/.next/standalone"
+elif [[ -f "${FRONTEND_DIR}/.next/standalone/packages/frontend/server.js" ]]; then
+  FRONTEND_STANDALONE_DIR="${FRONTEND_DIR}/.next/standalone/packages/frontend"
+else
+  echo "Frontend standalone server.js was not produced by the build."
+  exit 1
+fi
+
+echo "==> Staging standalone frontend assets in ${FRONTEND_STANDALONE_DIR}"
+mkdir -p "${FRONTEND_STANDALONE_DIR}/.next"
+rm -rf "${FRONTEND_STANDALONE_DIR}/.next/static"
+cp -R "${FRONTEND_DIR}/.next/static" "${FRONTEND_STANDALONE_DIR}/.next/static"
 
 if [[ -d "${FRONTEND_DIR}/public" ]]; then
-  rm -rf "${FRONTEND_DIR}/.next/standalone/public"
-  cp -R "${FRONTEND_DIR}/public" "${FRONTEND_DIR}/.next/standalone/public"
+  rm -rf "${FRONTEND_STANDALONE_DIR}/public"
+  cp -R "${FRONTEND_DIR}/public" "${FRONTEND_STANDALONE_DIR}/public"
 fi
 
 echo "==> Starting services with PM2"
@@ -123,6 +159,7 @@ SerialHub bootstrap complete.
 
 Frontend URL: ${FRONTEND_PUBLIC_URL}
 Backend URL:  ${BACKEND_PUBLIC_URL}
+Mode:         ${APP_MODE}
 
 PM2 commands:
   pm2 status
@@ -134,5 +171,10 @@ If you want Google OAuth, add these to ${BACKEND_ENV_FILE} and restart PM2:
   GOOGLE_CLIENT_ID=...
   GOOGLE_CLIENT_SECRET=...
   GOOGLE_CALLBACK_URL=${BACKEND_PUBLIC_URL}/api/auth/google/callback
+
+Local auth:
+  enabled=${LOCAL_AUTH_ENABLED_VALUE}
+  email=${LOCAL_AUTH_EMAIL_VALUE}
+  password=${LOCAL_AUTH_PASSWORD_VALUE}
 
 EOF
