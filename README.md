@@ -118,6 +118,31 @@ cd packages/backend && npm test
 cd docker && docker compose up --build
 ```
 
+## Debian VPS Bootstrap
+
+For a quick non-Docker deployment on a fresh Debian or Ubuntu VPS, the repo now includes:
+
+```bash
+bash scripts/bootstrap-debian-vps.sh
+```
+
+The script:
+
+- installs native build prerequisites
+- installs Node.js 20 LTS if needed
+- installs PM2
+- installs backend and frontend package dependencies
+- builds the backend
+- builds and stages the standalone frontend
+- creates a production backend `.env`
+- starts both services in the background with PM2
+
+You can override the detected public host when bootstrapping:
+
+```bash
+PUBLIC_HOST=your.domain.example bash scripts/bootstrap-debian-vps.sh
+```
+
 ## Current Platform Notes
 
 - Nodes are owner-scoped by `ownerUserId`; admins can access all resources.

@@ -29,6 +29,38 @@ Default public URL:
 
 - `http://localhost`
 
+## Quick Debian VPS Setup Without Docker
+
+For a direct VPS install with PM2 and the standalone frontend build:
+
+```bash
+bash scripts/bootstrap-debian-vps.sh
+```
+
+The bootstrap script is designed for Debian and Ubuntu style systems and will:
+
+- install required build tools for native Node modules
+- install Node.js 20 LTS if the current Node version is missing or unsupported
+- install PM2
+- install package dependencies for the root, backend, and frontend
+- build the backend
+- build and stage the standalone frontend runtime
+- create `packages/backend/.env`
+- start `serialhub-backend` and `serialhub-frontend` with PM2
+
+To force a specific public hostname or domain:
+
+```bash
+PUBLIC_HOST=your.domain.example bash scripts/bootstrap-debian-vps.sh
+```
+
+After bootstrap:
+
+```bash
+pm2 status
+pm2 logs
+```
+
 ## Important Environment Variables
 
 Compose currently sets:
