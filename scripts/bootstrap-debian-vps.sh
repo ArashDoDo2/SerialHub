@@ -34,11 +34,6 @@ fi
 
 FRONTEND_PUBLIC_URL="${FRONTEND_URL:-${PUBLIC_BASE_URL}:3000}"
 BACKEND_PUBLIC_URL="${BACKEND_URL:-${PUBLIC_BASE_URL}:3001}"
-SESSION_SECRET_VALUE="${SESSION_SECRET:-$(python3 - <<'PY'
-import secrets
-print(secrets.token_urlsafe(48))
-PY
-)}"
 LOCAL_AUTH_ENABLED_VALUE="${LOCAL_AUTH_ENABLED:-}"
 if [[ -z "${LOCAL_AUTH_ENABLED_VALUE}" ]]; then
   if [[ "${APP_MODE}" == "development" ]]; then
@@ -69,6 +64,16 @@ upsert_env() {
 echo "==> Installing required system packages"
 apt update
 apt install -y ca-certificates gnupg git python3 build-essential gcc g++ make curl
+
+if [[ -n "${SESSION_SECRET:-}" ]]; then
+  SESSION_SECRET_VALUE="${SESSION_SECRET}"
+else
+  SESSION_SECRET_VALUE="$(python3 - <<'PY'
+import secrets
+print(secrets.token_urlsafe(48))
+PY
+)"
+fi
 
 NODE_MAJOR=""
 if command -v node >/dev/null 2>&1; then
