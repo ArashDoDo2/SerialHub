@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import {
   Activity,
@@ -293,19 +293,6 @@ function describeRfc2217Payload(bytes: Uint8Array): string {
   return commandName;
 }
 
-function resolveBackendUrl(): string {
-  if (typeof window === 'undefined') {
-    return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-  }
-
-  if (process.env.NEXT_PUBLIC_BACKEND_URL) {
-    return process.env.NEXT_PUBLIC_BACKEND_URL;
-  }
-
-  const { protocol, hostname } = window.location;
-  return `${protocol}//${hostname}:3001`;
-}
-
 export default function TerminalPage() {
   const termRef = useRef<HTMLDivElement>(null);
   const termInstance = useRef<any>(null);
@@ -342,8 +329,6 @@ export default function TerminalPage() {
   const [actionBusyId, setActionBusyId] = useState<number | null>(null);
   const [developerMode, setDeveloperMode] = useState(false);
   const [requestedNodeId, setRequestedNodeId] = useState<number | null>(null);
-
-  const backendUrl = useMemo(() => resolveBackendUrl(), []);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -596,7 +581,10 @@ export default function TerminalPage() {
       void mountTerminal();
     });
 
-    const socket = io(backendUrl, { withCredentials: true });
+    const socket = io({
+      path: '/socket.io',
+      withCredentials: true,
+    });
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -604,7 +592,7 @@ export default function TerminalPage() {
       pushLocalTrace({
         direction: 'inbound',
         type: 'control',
-        message: `Realtime socket connected to ${backendUrl}`,
+        message: 'Realtime socket connected through same-origin /socket.io proxy',
       });
     });
 
@@ -741,7 +729,7 @@ export default function TerminalPage() {
       term?.dispose();
       termInstance.current = null;
     };
-  }, [backendUrl]);
+  }, []);
 
   useEffect(() => {
     if (!socketRef.current) {
