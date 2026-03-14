@@ -8,8 +8,8 @@ module.exports = {
     {
       name: 'serialhub-frontend',
       cwd: '.',
-      script: './scripts/start-frontend-standalone.sh',
-      interpreter: 'bash',
+      script: './scripts/start-frontend-standalone.cjs',
+      interpreter: 'node',
       env: {
         NODE_ENV: 'production',
         PORT: '3000',

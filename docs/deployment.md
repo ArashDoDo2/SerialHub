@@ -47,6 +47,7 @@ The bootstrap script is designed for Debian and Ubuntu style systems and will:
 - build and stage the standalone frontend runtime
 - create `packages/backend/.env`
 - start `serialhub-backend` and `serialhub-frontend` with PM2
+- replace any stale PM2 app definitions before starting the fresh backend and standalone frontend launchers
 
 By default it bootstraps the backend in `development` mode so local auth works immediately for first-time testing.
 

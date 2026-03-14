@@ -178,6 +178,8 @@ fi
 
 echo "==> Starting services with PM2"
 cd "${REPO_DIR}"
+pm2 delete serialhub-backend >/dev/null 2>&1 || true
+pm2 delete serialhub-frontend >/dev/null 2>&1 || true
 pm2 startOrRestart ecosystem.config.cjs --update-env
 pm2 save
 
