@@ -123,6 +123,9 @@ npm install
 (cd "${BACKEND_DIR}" && npm install)
 (cd "${FRONTEND_DIR}" && npm install)
 
+echo "==> Rebuilding better-sqlite3 native bindings"
+(cd "${BACKEND_DIR}" && npm rebuild better-sqlite3 --build-from-source)
+
 echo "==> Building backend"
 (cd "${BACKEND_DIR}" && npm run build)
 
