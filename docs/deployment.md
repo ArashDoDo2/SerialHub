@@ -52,10 +52,18 @@ By default it bootstraps the backend in `development` mode so local auth works i
 
 During interactive runs, the script prompts for the public IP or hostname and offers the detected server address as the default.
 
+The script builds the standalone frontend against `http://127.0.0.1:3001` by default so frontend `/api/*` rewrites continue to work even when the VPS public IP is not reachable from inside the local container or namespace.
+
 To force a specific public hostname or domain:
 
 ```bash
 PUBLIC_HOST=your.domain.example bash scripts/bootstrap-debian-vps.sh
+```
+
+To override the internal backend target used during the frontend build:
+
+```bash
+INTERNAL_BACKEND_URL=http://127.0.0.1:3001 bash scripts/bootstrap-debian-vps.sh
 ```
 
 To switch the bootstrap to a production-oriented backend configuration:

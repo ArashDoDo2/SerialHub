@@ -141,10 +141,18 @@ It defaults to `APP_MODE=development`, which is useful for first-time VPS bring-
 
 During interactive runs, the script asks for the public IP or hostname that browsers will use to reach the VPS. It shows the detected server address as the default, so pressing Enter accepts it.
 
+For standalone frontend builds, the script uses an internal backend target of `http://127.0.0.1:3001` by default so `/api/*` proxying works reliably inside the VPS even when the public IP is not reachable from the local container or namespace.
+
 You can override the detected public host when bootstrapping:
 
 ```bash
 PUBLIC_HOST=your.domain.example bash scripts/bootstrap-debian-vps.sh
+```
+
+You can also override the backend target used during the frontend build:
+
+```bash
+INTERNAL_BACKEND_URL=http://127.0.0.1:3001 bash scripts/bootstrap-debian-vps.sh
 ```
 
 For a production-oriented bootstrap:

@@ -97,6 +97,7 @@ fi
 
 FRONTEND_PUBLIC_URL="${FRONTEND_URL:-${PUBLIC_BASE_URL}:3000}"
 BACKEND_PUBLIC_URL="${BACKEND_URL:-${PUBLIC_BASE_URL}:3001}"
+INTERNAL_BACKEND_URL="${INTERNAL_BACKEND_URL:-http://127.0.0.1:3001}"
 
 NODE_MAJOR=""
 if command -v node >/dev/null 2>&1; then
@@ -153,7 +154,7 @@ echo "==> Building backend"
 (cd "${BACKEND_DIR}" && npm run build)
 
 echo "==> Building frontend standalone output"
-(cd "${FRONTEND_DIR}" && BACKEND_URL="${BACKEND_PUBLIC_URL}" npm run build)
+(cd "${FRONTEND_DIR}" && BACKEND_URL="${INTERNAL_BACKEND_URL}" npm run build)
 
 FRONTEND_STANDALONE_DIR=""
 if [[ -f "${FRONTEND_DIR}/.next/standalone/server.js" ]]; then
@@ -190,6 +191,7 @@ SerialHub bootstrap complete.
 
 Frontend URL: ${FRONTEND_PUBLIC_URL}
 Backend URL:  ${BACKEND_PUBLIC_URL}
+Internal backend target for frontend build: ${INTERNAL_BACKEND_URL}
 Mode:         ${APP_MODE}
 
 PM2 commands:
