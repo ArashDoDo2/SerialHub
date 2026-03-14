@@ -70,6 +70,31 @@ detect_default_public_host() {
   printf '%s' "${detected_host}"
 }
 
+normalize_origin() {
+  local raw_value="$1"
+
+  if [[ "${raw_value}" =~ ^https?:// ]]; then
+    printf '%s' "${raw_value}"
+  else
+    printf 'http://%s' "${raw_value}"
+  fi
+}
+
+derive_backend_origin() {
+  local frontend_origin="$1"
+
+  python3 - "$frontend_origin" <<'PY'
+import sys
+from urllib.parse import urlparse
+
+frontend_origin = sys.argv[1]
+parsed = urlparse(frontend_origin)
+scheme = parsed.scheme or "http"
+hostname = parsed.hostname or "127.0.0.1"
+print(f"{scheme}://{hostname}:3001")
+PY
+}
+
 echo "==> Installing required system packages"
 apt update
 apt install -y ca-certificates gnupg git python3 build-essential gcc g++ make curl
@@ -87,23 +112,20 @@ fi
 PUBLIC_HOST="${PUBLIC_HOST:-}"
 if [[ -z "${PUBLIC_HOST}" ]]; then
   DETECTED_PUBLIC_HOST="$(detect_default_public_host)"
+  DETECTED_FRONTEND_ORIGIN="http://${DETECTED_PUBLIC_HOST}:3000"
 
   if [[ -t 0 ]]; then
-    read -r -p "Public IP or hostname for browser access [${DETECTED_PUBLIC_HOST}]: " PUBLIC_HOST_INPUT
-    PUBLIC_HOST="${PUBLIC_HOST_INPUT:-${DETECTED_PUBLIC_HOST}}"
+    read -r -p "Public browser origin (include port if users will access :3000) [${DETECTED_FRONTEND_ORIGIN}]: " PUBLIC_HOST_INPUT
+    PUBLIC_HOST="${PUBLIC_HOST_INPUT:-${DETECTED_FRONTEND_ORIGIN}}"
   else
-    PUBLIC_HOST="${DETECTED_PUBLIC_HOST}"
+    PUBLIC_HOST="${DETECTED_FRONTEND_ORIGIN}"
   fi
 fi
 
-if [[ "${PUBLIC_HOST}" =~ ^https?:// ]]; then
-  PUBLIC_BASE_URL="${PUBLIC_HOST}"
-else
-  PUBLIC_BASE_URL="http://${PUBLIC_HOST}"
-fi
+PUBLIC_BASE_URL="$(normalize_origin "${PUBLIC_HOST}")"
 
-FRONTEND_PUBLIC_URL="${FRONTEND_URL:-${PUBLIC_BASE_URL}:3000}"
-BACKEND_PUBLIC_URL="${BACKEND_URL:-${PUBLIC_BASE_URL}:3001}"
+FRONTEND_PUBLIC_URL="${FRONTEND_URL:-${PUBLIC_BASE_URL}}"
+BACKEND_PUBLIC_URL="${BACKEND_URL:-$(derive_backend_origin "${FRONTEND_PUBLIC_URL}")}"
 INTERNAL_BACKEND_URL="${INTERNAL_BACKEND_URL:-http://127.0.0.1:3001}"
 
 NODE_MAJOR=""

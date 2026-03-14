@@ -53,7 +53,12 @@ If the backend already has a compiled `better-sqlite3` native binding, the scrip
 
 By default it bootstraps the backend in `development` mode so local auth works immediately for first-time testing.
 
-During interactive runs, the script prompts for the public IP or hostname and offers the detected server address as the default.
+During interactive runs, the script prompts for the full browser origin and offers `http://<detected-ip>:3000` as the default.
+
+Use the exact origin that browsers will open:
+
+- `http://your-ip:3000` for direct standalone access
+- `http://your-ip` if you expose the app on port `80` through a reverse proxy or port mapping
 
 The script builds the standalone frontend against `http://127.0.0.1:3001` by default so frontend `/api/*` and `/socket.io/*` rewrites continue to work even when the VPS public IP is not reachable from inside the local container or namespace.
 

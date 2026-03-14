@@ -141,7 +141,10 @@ If `better-sqlite3` is already compiled on the VPS, the bootstrap script reuses 
 
 It defaults to `APP_MODE=development`, which is useful for first-time VPS bring-up and enables local auth by default.
 
-During interactive runs, the script asks for the public IP or hostname that browsers will use to reach the VPS. It shows the detected server address as the default, so pressing Enter accepts it.
+During interactive runs, the script asks for the full browser origin that users will open, including scheme and port when needed. For example:
+
+- `http://159.100.17.169:3000` for direct access to the standalone frontend port
+- `http://159.100.17.169` when the app is exposed on port `80` through a reverse proxy or port mapping
 
 For standalone frontend builds, the script uses an internal backend target of `http://127.0.0.1:3001` by default so `/api/*` proxying works reliably inside the VPS even when the public IP is not reachable from the local container or namespace.
 
