@@ -25,13 +25,29 @@ docs                Product, architecture, and audit documentation
 
 ## Local Development
 
-1. Install dependencies:
+1. Install required system packages first if you are on a minimal Linux environment such as Debian slim, a RouterOS container, or another stripped-down container image:
+
+```bash
+apt update
+apt install -y python3 build-essential gcc g++ make curl
+```
+
+These packages are required because native modules such as `better-sqlite3` compile through `node-gyp` during `npm install`.
+
+2. Use a supported Node.js LTS release:
+
+- Node.js 20 LTS recommended
+- Node.js 22 LTS supported
+
+Avoid experimental Node releases such as Node 25 because native dependencies may not provide compatible prebuilt binaries.
+
+3. Install dependencies:
 
 ```bash
 npm install
 ```
 
-2. Create `packages/backend/.env` with at least:
+4. Create `packages/backend/.env` with at least:
 
 ```env
 PORT=3001
@@ -41,7 +57,7 @@ FRONTEND_URL=http://localhost:3000
 BACKEND_URL=http://localhost:3001
 ```
 
-3. Start both apps:
+5. Start both apps:
 
 ```bash
 npm run dev
@@ -51,6 +67,29 @@ Development URLs:
 
 - frontend: `http://localhost:3000`
 - backend: `http://localhost:3001`
+
+## Minimal Install Flow
+
+```bash
+git clone https://github.com/ArashDoDo2/SerialHub.git
+cd SerialHub
+npm install
+npm run build
+npm start
+```
+
+If Node.js is upgraded after dependencies were installed, rebuild native modules:
+
+```bash
+npm rebuild
+```
+
+Or reinstall dependencies cleanly:
+
+```bash
+rm -rf node_modules
+npm install
+```
 
 ## Auth Modes
 

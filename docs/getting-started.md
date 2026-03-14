@@ -2,23 +2,35 @@
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20 LTS recommended
+- Node.js 22 LTS supported
 - npm 9+
 - Docker Desktop or Docker Engine with Compose if you want the container stack
 - A reachable `raw-tcp` or `rfc2217` endpoint if you want live serial testing
 - Google OAuth credentials only if you want Google login outside development-only local auth
 
+Avoid experimental Node versions such as Node 25. Native modules such as `better-sqlite3` may not have compatible prebuilt binaries there.
+
 ## Local Setup
 
-1. Install dependencies:
+1. If you are on a minimal Debian-style environment, install required build tools before `npm install`:
+
+```bash
+apt update
+apt install -y python3 build-essential gcc g++ make curl
+```
+
+These packages are required because native modules such as `better-sqlite3` compile through `node-gyp`.
+
+2. Install dependencies:
 
 ```bash
 npm install
 ```
 
-2. Create `packages/backend/.env`.
+3. Create `packages/backend/.env`.
 
-3. Start the monorepo:
+4. Start the monorepo:
 
 ```bash
 npm run dev
@@ -28,6 +40,16 @@ This starts:
 
 - frontend on `http://localhost:3000`
 - backend on `http://localhost:3001`
+
+## Minimal Install Sequence
+
+```bash
+git clone https://github.com/ArashDoDo2/SerialHub.git
+cd SerialHub
+npm install
+npm run build
+npm start
+```
 
 ## Minimum Backend Environment
 
@@ -80,3 +102,5 @@ LOCAL_AUTH_NAME=Local Master
 - Nodes support `connectionType = raw-tcp | rfc2217`.
 - The dashboard `Active nodes` metric is based on live connection probes.
 - Terminal sessions are single-controller and stale sessions are cleaned up on backend startup.
+- On minimal container environments such as Debian slim or MikroTik RouterOS containers, the build dependencies above are mandatory.
+- If Node.js is upgraded after install, rebuild native modules with `npm rebuild` or reinstall dependencies with `rm -rf node_modules && npm install`.
