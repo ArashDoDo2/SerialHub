@@ -49,6 +49,8 @@ The bootstrap script is designed for Debian and Ubuntu style systems and will:
 - start `serialhub-backend` and `serialhub-frontend` with PM2
 - replace any stale PM2 app definitions before starting the fresh backend and standalone frontend launchers
 
+If the backend already has a compiled `better-sqlite3` native binding, the script reuses it instead of forcing a rebuild on every bootstrap run.
+
 By default it bootstraps the backend in `development` mode so local auth works immediately for first-time testing.
 
 During interactive runs, the script prompts for the public IP or hostname and offers the detected server address as the default.

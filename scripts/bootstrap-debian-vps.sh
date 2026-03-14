@@ -45,6 +45,13 @@ upsert_env() {
   fi
 }
 
+better_sqlite3_binding_exists() {
+  local release_binding="${BACKEND_DIR}/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+  local debug_binding="${BACKEND_DIR}/node_modules/better-sqlite3/build/Debug/better_sqlite3.node"
+
+  [[ -f "${release_binding}" || -f "${debug_binding}" ]]
+}
+
 detect_default_public_host() {
   local detected_host=""
 
@@ -147,8 +154,12 @@ npm install
 (cd "${BACKEND_DIR}" && npm install)
 (cd "${FRONTEND_DIR}" && npm install)
 
-echo "==> Rebuilding better-sqlite3 native bindings"
-(cd "${BACKEND_DIR}" && npm rebuild better-sqlite3 --build-from-source)
+if better_sqlite3_binding_exists; then
+  echo "==> Reusing existing better-sqlite3 native bindings"
+else
+  echo "==> Rebuilding better-sqlite3 native bindings"
+  (cd "${BACKEND_DIR}" && npm rebuild better-sqlite3 --build-from-source)
+fi
 
 echo "==> Building backend"
 (cd "${BACKEND_DIR}" && npm run build)

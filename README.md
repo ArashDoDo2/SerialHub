@@ -137,6 +137,8 @@ The script:
 - creates a backend `.env`
 - starts both services in the background with PM2
 
+If `better-sqlite3` is already compiled on the VPS, the bootstrap script reuses the existing native binding instead of rebuilding it on every run.
+
 It defaults to `APP_MODE=development`, which is useful for first-time VPS bring-up and enables local auth by default.
 
 During interactive runs, the script asks for the public IP or hostname that browsers will use to reach the VPS. It shows the detected server address as the default, so pressing Enter accepts it.
