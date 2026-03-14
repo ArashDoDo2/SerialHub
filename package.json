@@ -1,0 +1,37 @@
+{
+
+  "name": "serialhub-monorepo",
+
+  "version": "1.0.0",
+
+  "private": true,
+
+  "scripts": {
+
+    "dev:backend": "cd packages/backend && npm run dev",
+
+    "dev:frontend": "cd packages/frontend && npm run dev",
+
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+
+    "build:backend": "cd packages/backend && npm run build",
+
+    "build:frontend": "cd packages/frontend && npm run build",
+
+    "build": "npm run build:backend && npm run build:frontend",
+
+    "start:backend": "cd packages/backend && npm run start",
+
+    "start:frontend": "cd packages/frontend && npm run start",
+
+    "start": "npm run start:backend && npm run start:frontend"
+
+  },
+
+  "devDependencies": {
+
+    "concurrently": "^8.2.2"
+
+  }
+
+}

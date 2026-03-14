@@ -1,0 +1,2 @@
+-- Ownership normalization for multi-tenant isolation.
+-- Existing databases may still have legacy createdByUserId/runByUserId-only ownership fields.

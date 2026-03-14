@@ -1,0 +1,1 @@
+-- Terminal session socket binding is handled in app code and migration bootstrap.

@@ -1,0 +1,79 @@
+# Deployment
+
+SerialHub ships with a compose-based deployment under `docker/docker-compose.yml`.
+
+## Services
+
+- `backend`
+  - Express + Socket.IO
+  - internal port `3001`
+  - SQLite data mounted at `/app/data`
+  - logs mounted at `/app/logs`
+- `frontend`
+  - Next.js production server
+  - internal port `3000`
+- `nginx`
+  - public entrypoint on port `80`
+  - proxies frontend traffic and `/api` calls
+
+## Compose Startup
+
+From the repository root:
+
+```bash
+cd docker
+docker compose up --build
+```
+
+Default public URL:
+
+- `http://localhost`
+
+## Important Environment Variables
+
+Compose currently sets:
+
+- `NODE_ENV=production`
+- `FRONTEND_URL=http://localhost`
+- `BACKEND_URL=http://backend:3001`
+- `TRUST_PROXY=true`
+- `DATABASE_PATH=/app/data/serialhub.db`
+- `SESSION_SECRET` from the compose environment
+
+If you use Google OAuth in deployment, also provide:
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_CALLBACK_URL`
+
+## Persistence
+
+Named volumes are used for:
+
+- `serialhub-data`
+- `serialhub-logs`
+
+This keeps SQLite data and backend logs across container restarts.
+
+## Health Checks
+
+The compose stack includes health checks for:
+
+- backend readiness on `/api/health/ready`
+- frontend HTTP availability
+- nginx HTTP availability
+
+## Production Notes
+
+- local auth must stay disabled in production
+- set a strong `SESSION_SECRET`
+- make sure OAuth callback URLs match the deployed origin
+- terminate TLS at nginx or an upstream load balancer
+
+## Scaling Notes
+
+The current default deployment is optimized for one SQLite-backed instance. Horizontal scaling would require at least:
+
+- a shared session store
+- a database suitable for multi-instance writes
+- coordination for live terminal control semantics
