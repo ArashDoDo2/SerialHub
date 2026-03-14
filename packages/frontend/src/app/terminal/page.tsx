@@ -293,6 +293,42 @@ function describeRfc2217Payload(bytes: Uint8Array): string {
   return commandName;
 }
 
+function resolveRealtimeSocketConfig(): {
+  url?: string;
+  path: string;
+  connectionLabel: string;
+} {
+  if (typeof window === 'undefined') {
+    return {
+      path: '/socket.io',
+      connectionLabel: 'same-origin /socket.io proxy',
+    };
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return {
+      path: '/socket.io',
+      connectionLabel: 'same-origin /socket.io proxy',
+    };
+  }
+
+  if (process.env.NEXT_PUBLIC_BACKEND_URL) {
+    return {
+      url: process.env.NEXT_PUBLIC_BACKEND_URL,
+      path: '/socket.io',
+      connectionLabel: `${process.env.NEXT_PUBLIC_BACKEND_URL}/socket.io`,
+    };
+  }
+
+  const { protocol, hostname } = window.location;
+  const backendUrl = `${protocol}//${hostname}:3001`;
+  return {
+    url: backendUrl,
+    path: '/socket.io',
+    connectionLabel: `${backendUrl}/socket.io`,
+  };
+}
+
 export default function TerminalPage() {
   const termRef = useRef<HTMLDivElement>(null);
   const termInstance = useRef<any>(null);
@@ -581,8 +617,9 @@ export default function TerminalPage() {
       void mountTerminal();
     });
 
-    const socket = io({
-      path: '/socket.io',
+    const realtimeSocketConfig = resolveRealtimeSocketConfig();
+    const socket = io(realtimeSocketConfig.url, {
+      path: realtimeSocketConfig.path,
       withCredentials: true,
     });
     socketRef.current = socket;
@@ -592,7 +629,7 @@ export default function TerminalPage() {
       pushLocalTrace({
         direction: 'inbound',
         type: 'control',
-        message: 'Realtime socket connected through same-origin /socket.io proxy',
+        message: `Realtime socket connected through ${realtimeSocketConfig.connectionLabel}`,
       });
     });
 
