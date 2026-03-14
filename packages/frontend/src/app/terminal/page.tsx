@@ -3,7 +3,6 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { io } from 'socket.io-client';
 import {
   Activity,
@@ -308,7 +307,6 @@ function resolveBackendUrl(): string {
 }
 
 export default function TerminalPage() {
-  const searchParams = useSearchParams();
   const termRef = useRef<HTMLDivElement>(null);
   const termInstance = useRef<any>(null);
   const socketRef = useRef<any>(null);
@@ -319,7 +317,6 @@ export default function TerminalPage() {
   const lineEndingRef = useRef<'LF' | 'CR' | 'CRLF'>('LF');
   const selectedNodeIdRef = useRef<number | null>(null);
   const sessionIdRef = useRef<number | null>(null);
-  const developerMode = searchParams.get('debug') === '1';
   const [nodes, setNodes] = useState<NodeItem[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
   const [status, setStatus] = useState<'connected' | 'disconnected' | 'error'>('disconnected');
@@ -343,8 +340,22 @@ export default function TerminalPage() {
   const [automationEnabled, setAutomationEnabled] = useState(false);
   const [automationObserverCount, setAutomationObserverCount] = useState(0);
   const [actionBusyId, setActionBusyId] = useState<number | null>(null);
+  const [developerMode, setDeveloperMode] = useState(false);
+  const [requestedNodeId, setRequestedNodeId] = useState<number | null>(null);
 
   const backendUrl = useMemo(() => resolveBackendUrl(), []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    setDeveloperMode(params.get('debug') === '1');
+
+    const parsedNodeId = Number(params.get('nodeId'));
+    setRequestedNodeId(Number.isInteger(parsedNodeId) && parsedNodeId > 0 ? parsedNodeId : null);
+  }, []);
 
   const sendTerminalInput = (data: string) => {
     if (!data || !connectedRef.current || !selectedNodeIdRef.current || !socketRef.current) {
@@ -386,7 +397,6 @@ export default function TerminalPage() {
       .then((data) => {
         setNodes(Array.isArray(data) ? data : []);
         if (Array.isArray(data) && data.length > 0) {
-          const requestedNodeId = Number(searchParams.get('nodeId'));
           const matchingNode = data.find((node) => node.id === requestedNodeId);
           setSelectedNodeId(matchingNode?.id ?? data[0].id);
         }
@@ -394,7 +404,7 @@ export default function TerminalPage() {
       .catch(() => {
         setNodes([]);
       });
-  }, [searchParams]);
+  }, [requestedNodeId]);
 
   useEffect(() => {
     if (!selectedNodeId) {
