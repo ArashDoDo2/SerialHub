@@ -28,6 +28,7 @@ interface NodeItem {
   id: number;
   name: string;
   connectionType?: 'raw-tcp' | 'rfc2217';
+  isActive?: boolean;
 }
 
 interface TerminalChunk {
@@ -416,14 +417,20 @@ export default function TerminalPage() {
     fetch('/api/nodes')
       .then((response) => response.json())
       .then((data) => {
-        setNodes(Array.isArray(data) ? data : []);
-        if (Array.isArray(data) && data.length > 0) {
-          const matchingNode = data.find((node) => node.id === requestedNodeId);
-          setSelectedNodeId(matchingNode?.id ?? data[0].id);
+        const activeNodes = Array.isArray(data)
+          ? data.filter((node): node is NodeItem => node?.isActive !== false)
+          : [];
+        setNodes(activeNodes);
+        if (activeNodes.length > 0) {
+          const matchingNode = activeNodes.find((node) => node.id === requestedNodeId);
+          setSelectedNodeId(matchingNode?.id ?? activeNodes[0].id);
+        } else {
+          setSelectedNodeId(null);
         }
       })
       .catch(() => {
         setNodes([]);
+        setSelectedNodeId(null);
       });
   }, [requestedNodeId]);
 

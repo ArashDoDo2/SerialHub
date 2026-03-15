@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Alert from '@/components/ui/Alert';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import StatusIndicator from '@/components/ui/StatusIndicator';
-import { Cable, Pencil, Plus, Server, Trash2, X } from 'lucide-react';
+import { Cable, Pencil, Plus, Power, Server, Trash2, X } from 'lucide-react';
 import { probeNodeStatuses } from '@/lib/nodeStatus';
 
 interface Node {
@@ -19,7 +19,7 @@ interface Node {
   parity?: 'none' | 'even' | 'odd' | 'mark' | 'space';
   stopBits?: number;
   isActive?: boolean;
-  status: 'online' | 'offline' | 'busy' | 'error';
+  status: 'online' | 'offline' | 'busy' | 'error' | 'disabled';
   lastActivity: string;
 }
 
@@ -57,6 +57,7 @@ export default function NodesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingNodeId, setDeletingNodeId] = useState<number | null>(null);
+  const [togglingNodeId, setTogglingNodeId] = useState<number | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<number | null>(null);
   const [form, setForm] = useState<CreateNodeForm>(initialForm);
 
@@ -73,9 +74,22 @@ export default function NodesPage() {
       parity: node.parity ?? 'none',
       stopBits: node.stopBits ?? 1,
       isActive: node.isActive ?? true,
-      status: node.isActive === false ? 'offline' : 'busy',
+      status: node.isActive === false ? 'disabled' : 'busy',
       lastActivity: node.isActive === false ? 'Disabled' : 'Checking...',
     }));
+
+  const toNodePayload = (node: Node) => ({
+    name: node.name,
+    description: node.description?.trim() || undefined,
+    connectionType: node.connectionType ?? 'raw-tcp',
+    host: node.host,
+    port: Number(node.port),
+    baudRate: Number(node.baudRate),
+    dataBits: Number(node.dataBits ?? 8),
+    parity: node.parity ?? 'none',
+    stopBits: Number(node.stopBits ?? 1),
+    isActive: node.isActive ?? true,
+  });
 
   const loadNodes = async () => {
     try {
@@ -90,19 +104,20 @@ export default function NodesPage() {
         return;
       }
 
-      const liveStatuses = await probeNodeStatuses(rawNodes.map((node) => node.id));
+      const probeTargets = rawNodes.filter((node) => node.isActive !== false).map((node) => node.id);
+      const liveStatuses = await probeNodeStatuses(probeTargets);
       setNodes((current) =>
         (current ?? hydratedNodes).map((node) => ({
           ...node,
-          status: liveStatuses[node.id] ?? (node.isActive === false ? 'offline' : 'error'),
+          status: node.isActive === false ? 'disabled' : liveStatuses[node.id] ?? 'error',
           lastActivity:
-            liveStatuses[node.id] === 'online'
+            node.isActive === false
+              ? 'Disabled'
+              : liveStatuses[node.id] === 'online'
               ? 'Reachable now'
               : liveStatuses[node.id] === 'offline'
                 ? 'No response'
-                : node.isActive === false
-                  ? 'Disabled'
-                  : 'Probe failed',
+                : 'Probe failed',
         }))
       );
     } catch (requestError) {
@@ -250,6 +265,37 @@ export default function NodesPage() {
       setError((deleteError as Error).message);
     } finally {
       setDeletingNodeId(null);
+    }
+  };
+
+  const handleToggleNode = async (node: Node) => {
+    setError(null);
+    setFormSuccess(null);
+    setTogglingNodeId(node.id);
+
+    try {
+      const response = await fetch(`/api/nodes/${node.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...toNodePayload(node),
+          isActive: !(node.isActive ?? true),
+        }),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json().catch(() => null);
+        throw new Error(responseBody?.error || responseBody?.message || 'Failed to update node state.');
+      }
+
+      await loadNodes();
+      setFormSuccess(
+        node.isActive === false ? `Node "${node.name}" enabled.` : `Node "${node.name}" disabled.`
+      );
+    } catch (toggleError) {
+      setError((toggleError as Error).message);
+    } finally {
+      setTogglingNodeId(null);
     }
   };
 
@@ -536,6 +582,28 @@ export default function NodesPage() {
                       >
                         <Pencil className="h-4 w-4" />
                         <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          n.isActive === false
+                            ? 'action-button border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-emerald-100 hover:bg-emerald-500/20'
+                            : 'action-button border-amber-400/20 bg-amber-500/10 px-3 py-2 text-amber-100 hover:bg-amber-500/20'
+                        }
+                        disabled={togglingNodeId === n.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleToggleNode(n);
+                        }}
+                      >
+                        <Power className="h-4 w-4" />
+                        <span>
+                          {togglingNodeId === n.id
+                            ? 'Saving...'
+                            : n.isActive === false
+                              ? 'Enable'
+                              : 'Disable'}
+                        </span>
                       </button>
                       <button
                         type="button"

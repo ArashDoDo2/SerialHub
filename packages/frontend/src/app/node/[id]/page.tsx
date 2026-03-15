@@ -25,7 +25,8 @@ interface Node {
   parity: string;
   stopBits: number;
   profile?: string;
-  status?: 'online' | 'offline' | 'busy' | 'error';
+  status?: 'online' | 'offline' | 'busy' | 'error' | 'disabled';
+  isActive?: boolean;
 }
 
 interface Agent {
@@ -54,9 +55,13 @@ export default function NodeDetailPage({ params }: Props) {
 
         setNode({
           ...nodeData,
-          status: nodeData?.isActive === false ? 'offline' : 'busy',
+          status: nodeData?.isActive === false ? 'disabled' : 'busy',
         });
         setAgents(Array.isArray(agentData) ? agentData : []);
+
+        if (nodeData?.isActive === false) {
+          return;
+        }
 
         const liveStatus = await probeNodeStatus(Number(params.id));
         if (cancelled) {

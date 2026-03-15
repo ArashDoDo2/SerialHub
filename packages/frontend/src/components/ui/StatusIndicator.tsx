@@ -10,6 +10,7 @@ const colorMap: Record<string, string> = {
   connected: 'bg-status-online',
   offline: 'bg-status-offline',
   disconnected: 'bg-status-offline',
+  disabled: 'bg-status-offline',
   busy: 'bg-status-busy',
   error: 'bg-status-error',
 };
@@ -19,7 +20,8 @@ export default function StatusIndicator({ status, size = 3 }: Props) {
   const isConnected = status === 'online' || status === 'connected';
   const isBusy = status === 'busy';
   const isError = status === 'error';
-  const isDisconnected = status === 'offline' || status === 'disconnected';
+  const isDisabled = status === 'disabled';
+  const isDisconnected = status === 'offline' || status === 'disconnected' || isDisabled;
   const pulse = isDisconnected ? 'animate-pulse' : '';
   const beaconClass = isConnected
     ? 'status-beacon-glow status-beacon-glow-connected'
