@@ -19,21 +19,47 @@ export interface SerialNode {
   updatedAt: string;
 }
 
+function normalizeSerialNode(row: SerialNode | undefined): SerialNode | undefined {
+  if (!row) {
+    return row;
+  }
+
+  return {
+    ...row,
+    isActive: Boolean(row.isActive),
+  };
+}
+
+function normalizeSerialNodes(rows: SerialNode[]): SerialNode[] {
+  return rows.map((row) => ({
+    ...row,
+    isActive: Boolean(row.isActive),
+  }));
+}
+
 export class SerialNodeRepository extends BaseRepository {
   getAll(): SerialNode[] {
-    return this.prepare('SELECT * FROM serialNodes').all() as SerialNode[];
+    return normalizeSerialNodes(this.prepare('SELECT * FROM serialNodes').all() as SerialNode[]);
   }
 
   getAllForOwner(ownerUserId: number): SerialNode[] {
-    return this.prepare('SELECT * FROM serialNodes WHERE ownerUserId = ? ORDER BY updatedAt DESC, id DESC').all(ownerUserId) as SerialNode[];
+    return normalizeSerialNodes(
+      this.prepare('SELECT * FROM serialNodes WHERE ownerUserId = ? ORDER BY updatedAt DESC, id DESC').all(
+        ownerUserId
+      ) as SerialNode[]
+    );
   }
 
   getById(id: number): SerialNode | undefined {
-    return this.prepare('SELECT * FROM serialNodes WHERE id = ?').get(id) as SerialNode | undefined;
+    return normalizeSerialNode(this.prepare('SELECT * FROM serialNodes WHERE id = ?').get(id) as SerialNode | undefined);
   }
 
   getByIdForOwner(id: number, ownerUserId: number): SerialNode | undefined {
-    return this.prepare('SELECT * FROM serialNodes WHERE id = ? AND ownerUserId = ?').get(id, ownerUserId) as SerialNode | undefined;
+    return normalizeSerialNode(
+      this.prepare('SELECT * FROM serialNodes WHERE id = ? AND ownerUserId = ?').get(id, ownerUserId) as
+        | SerialNode
+        | undefined
+    );
   }
 
   create(node: Partial<SerialNode>): SerialNode {
