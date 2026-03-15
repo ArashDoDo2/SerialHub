@@ -23,6 +23,7 @@ SerialHub is a remote serial operations platform with:
 5. [serial-nodes.md](./serial-nodes.md)
 6. [transport-architecture.md](./transport-architecture.md)
 7. [multi-tenant-model.md](./multi-tenant-model.md)
+8. [roadmap.md](./roadmap.md)
 
 ## Notes
 
@@ -31,3 +32,4 @@ SerialHub is a remote serial operations platform with:
   - [ai-observer.md](./ai-observer.md)
   - [ai-copilot.md](./ai-copilot.md)
   - [ai-automation.md](./ai-automation.md)
+- Roadmap includes both product and engineering items.
