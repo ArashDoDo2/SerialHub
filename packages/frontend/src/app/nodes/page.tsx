@@ -60,24 +60,51 @@ export default function NodesPage() {
   const [editingNodeId, setEditingNodeId] = useState<number | null>(null);
   const [form, setForm] = useState<CreateNodeForm>(initialForm);
 
+  const hydrateNodes = (rawNodes: Partial<Node>[]): Node[] =>
+    rawNodes.map((node) => ({
+      id: Number(node.id),
+      name: String(node.name || `Node ${node.id}`),
+      description: node.description,
+      connectionType: node.connectionType ?? 'raw-tcp',
+      host: String(node.host || ''),
+      port: Number(node.port || 0),
+      baudRate: Number(node.baudRate || 0),
+      dataBits: node.dataBits ?? 8,
+      parity: node.parity ?? 'none',
+      stopBits: node.stopBits ?? 1,
+      isActive: node.isActive ?? true,
+      status: node.isActive === false ? 'offline' : 'busy',
+      lastActivity: node.isActive === false ? 'Disabled' : 'Checking...',
+    }));
+
   const loadNodes = async () => {
     try {
       const response = await fetch('/api/nodes');
       const data = await response.json();
       const rawNodes = Array.isArray(data) ? data : [];
-      const liveStatuses = await probeNodeStatuses(rawNodes.map((node) => node.id));
-      const hydratedNodes = rawNodes.map((node) => ({
-        ...node,
-        status: liveStatuses[node.id] ?? (node.isActive === false ? 'offline' : 'error'),
-        lastActivity:
-          liveStatuses[node.id] === 'online'
-            ? 'Reachable now'
-            : liveStatuses[node.id] === 'offline'
-              ? 'No response'
-              : 'Probe failed',
-      }));
+      const hydratedNodes = hydrateNodes(rawNodes);
       setNodes(hydratedNodes);
       setError(null);
+
+      if (rawNodes.length === 0) {
+        return;
+      }
+
+      const liveStatuses = await probeNodeStatuses(rawNodes.map((node) => node.id));
+      setNodes((current) =>
+        (current ?? hydratedNodes).map((node) => ({
+          ...node,
+          status: liveStatuses[node.id] ?? (node.isActive === false ? 'offline' : 'error'),
+          lastActivity:
+            liveStatuses[node.id] === 'online'
+              ? 'Reachable now'
+              : liveStatuses[node.id] === 'offline'
+                ? 'No response'
+                : node.isActive === false
+                  ? 'Disabled'
+                  : 'Probe failed',
+        }))
+      );
     } catch (requestError) {
       console.error(requestError);
       setError('Failed to load nodes');

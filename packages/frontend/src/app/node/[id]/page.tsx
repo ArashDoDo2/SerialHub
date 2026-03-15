@@ -42,21 +42,46 @@ export default function NodeDetailPage({ params }: Props) {
   const [agentMessage, setAgentMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     Promise.all([fetch(`/api/nodes/${params.id}`), fetch('/api/ai-observers')])
       .then(async ([nodeResponse, agentsResponse]) => {
         const nodeData = await nodeResponse.json();
         const agentData = agentsResponse.ok ? await agentsResponse.json() : [];
-        const liveStatus = await probeNodeStatus(Number(params.id));
+        if (cancelled) {
+          return;
+        }
+
         setNode({
           ...nodeData,
-          status: liveStatus,
+          status: nodeData?.isActive === false ? 'offline' : 'busy',
         });
         setAgents(Array.isArray(agentData) ? agentData : []);
+
+        const liveStatus = await probeNodeStatus(Number(params.id));
+        if (cancelled) {
+          return;
+        }
+
+        setNode((current) =>
+          current
+            ? {
+                ...current,
+                status: liveStatus,
+              }
+            : current
+        );
       })
       .catch(() => {
-        setNode(null);
-        setAgents([]);
+        if (!cancelled) {
+          setNode(null);
+          setAgents([]);
+        }
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [params.id]);
 
   useEffect(() => {
