@@ -14,6 +14,8 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: '3000',
         HOSTNAME: '0.0.0.0',
+        SERIALHUB_INTERNAL_FRONTEND_PORT: '3100',
+        SERIALHUB_BACKEND_TARGET: 'http://127.0.0.1:3001',
       },
     },
   ],

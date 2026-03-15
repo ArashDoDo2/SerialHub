@@ -62,6 +62,8 @@ Use the exact origin that browsers will open:
 
 The script builds the standalone frontend against `http://127.0.0.1:3001` by default so frontend `/api/*` and `/socket.io/*` rewrites continue to work even when the VPS public IP is not reachable from inside the local container or namespace.
 
+In the PM2 standalone deployment, browsers should only need the frontend origin. The standalone launcher exposes a single public port and proxies page requests, `/api/*`, and `/socket.io/*` to the internal Next.js and backend processes.
+
 To force a specific public hostname or domain:
 
 ```bash

@@ -148,6 +148,8 @@ During interactive runs, the script asks for the full browser origin that users 
 
 For standalone frontend builds, the script uses an internal backend target of `http://127.0.0.1:3001` by default so `/api/*` proxying works reliably inside the VPS even when the public IP is not reachable from the local container or namespace.
 
+In the PM2 standalone deployment, the public frontend port acts as the single browser-facing entrypoint. It proxies page traffic, `/api/*`, and `/socket.io/*` to the appropriate internal services, so remote clients do not need direct access to port `3001`.
+
 You can override the detected public host when bootstrapping:
 
 ```bash
