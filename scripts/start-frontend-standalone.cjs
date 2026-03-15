@@ -55,8 +55,22 @@ child.on('error', (error) => {
   process.exit(1);
 });
 
+function isBackendPath(requestUrl = '/') {
+  try {
+    const pathname = new URL(requestUrl, 'http://serialhub.local').pathname;
+    return (
+      pathname === '/api' ||
+      pathname.startsWith('/api/') ||
+      pathname === '/socket.io' ||
+      pathname.startsWith('/socket.io/')
+    );
+  } catch {
+    return requestUrl === '/api' || requestUrl.startsWith('/api/') || requestUrl === '/socket.io' || requestUrl.startsWith('/socket.io/');
+  }
+}
+
 function pickTarget(requestUrl = '/') {
-  if (requestUrl.startsWith('/api/') || requestUrl.startsWith('/socket.io/')) {
+  if (isBackendPath(requestUrl)) {
     return backendTarget;
   }
 
