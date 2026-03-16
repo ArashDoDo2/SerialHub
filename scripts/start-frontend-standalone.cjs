@@ -129,6 +129,40 @@ function pickTarget(requestUrl = '/') {
   return frontendTarget;
 }
 
+function getClientAddress(request) {
+  const remoteAddress = request.socket?.remoteAddress || '';
+  if (typeof remoteAddress !== 'string') {
+    return '';
+  }
+
+  return remoteAddress;
+}
+
+function buildForwardedHeaders(request, target) {
+  const headers = {
+    ...request.headers,
+    host: target.host,
+  };
+  const clientAddress = getClientAddress(request);
+  const forwardedFor = request.headers['x-forwarded-for'];
+
+  if (clientAddress) {
+    headers['x-real-ip'] = clientAddress;
+    headers['x-forwarded-for'] =
+      typeof forwardedFor === 'string' && forwardedFor.trim().length > 0
+        ? `${forwardedFor}, ${clientAddress}`
+        : clientAddress;
+  }
+
+  if (request.headers.host) {
+    headers['x-forwarded-host'] = request.headers.host;
+  }
+
+  headers['x-forwarded-proto'] = 'http';
+
+  return headers;
+}
+
 function proxyHttpRequest(clientReq, clientRes) {
   const target = pickTarget(clientReq.url);
   const transport = target.protocol === 'https:' ? https : http;
@@ -140,10 +174,7 @@ function proxyHttpRequest(clientReq, clientRes) {
       port: target.port || (target.protocol === 'https:' ? 443 : 80),
       method: clientReq.method,
       path: clientReq.url,
-      headers: {
-        ...clientReq.headers,
-        host: target.host,
-      },
+      headers: buildForwardedHeaders(clientReq, target),
     },
     (proxyRes) => {
       clientRes.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
@@ -165,16 +196,24 @@ function proxyUpgradeRequest(request, socket, head) {
   const target = pickTarget(request.url);
   const targetPort = Number(target.port || (target.protocol === 'https:' ? 443 : 80));
   const upstream = net.connect(targetPort, target.hostname, () => {
+    const forwardedHeaders = buildForwardedHeaders(request, target);
     let headerBlock = `${request.method} ${request.url} HTTP/${request.httpVersion}\r\n`;
-    for (let index = 0; index < request.rawHeaders.length; index += 2) {
-      const headerName = request.rawHeaders[index];
-      const headerValue = request.rawHeaders[index + 1];
-      if (headerName.toLowerCase() === 'host') {
+
+    for (const [headerName, headerValue] of Object.entries(forwardedHeaders)) {
+      if (Array.isArray(headerValue)) {
+        for (const value of headerValue) {
+          headerBlock += `${headerName}: ${value}\r\n`;
+        }
         continue;
       }
+
+      if (headerValue === undefined) {
+        continue;
+      }
+
       headerBlock += `${headerName}: ${headerValue}\r\n`;
     }
-    headerBlock += `Host: ${target.host}\r\n\r\n`;
+    headerBlock += '\r\n';
 
     upstream.write(headerBlock);
     if (head.length > 0) {

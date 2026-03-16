@@ -22,6 +22,29 @@ const terminalSessionSchema = z.object({
   controllerKey: z.string().min(1),
 });
 
+const getClientAddress = (req: Request) => {
+  const forwardedForHeader = req.headers['x-forwarded-for'];
+  const forwardedForValue = Array.isArray(forwardedForHeader)
+    ? forwardedForHeader[0]
+    : forwardedForHeader;
+  const forwardedAddress = forwardedForValue
+    ?.split(',')
+    .map((entry) => entry.trim())
+    .find((entry) => entry.length > 0);
+
+  if (forwardedAddress) {
+    return forwardedAddress;
+  }
+
+  const realIpHeader = req.headers['x-real-ip'];
+  const realIpValue = Array.isArray(realIpHeader) ? realIpHeader[0] : realIpHeader;
+  if (realIpValue && realIpValue.trim().length > 0) {
+    return realIpValue.trim();
+  }
+
+  return req.ip;
+};
+
 router.post('/start', async (req: Request, res: Response) => {
   const parsed = terminalSessionSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -41,7 +64,7 @@ router.post('/start', async (req: Request, res: Response) => {
       parsed.data.nodeId,
       userId,
       parsed.data.controllerKey,
-      req.ip
+      getClientAddress(req)
     );
     await mgr.openConnection(parsed.data.nodeId);
     aiObserverService.startTerminalSession({
