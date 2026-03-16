@@ -6,12 +6,24 @@ export interface TerminalSession {
   id: number;
   nodeId: number;
   userId: number;
+  clientAddress?: string;
   startedAt: string;
   finishedAt?: string;
   logFilePath?: string;
   status: TerminalSessionStatus;
   controllerKey?: string;
   controllingSocketId?: string;
+  heartbeatAt?: string;
+}
+
+export interface ActiveTerminalLockInfo {
+  sessionId: number;
+  nodeId: number;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  clientAddress?: string;
+  startedAt: string;
   heartbeatAt?: string;
 }
 
@@ -37,12 +49,13 @@ export class TerminalSessionRepository extends BaseRepository {
   create(data: Pick<TerminalSession, 'nodeId' | 'userId' | 'status'> & Partial<TerminalSession>): TerminalSession {
     const stmt = this.prepare(
       `INSERT INTO terminalSessions
-       (nodeId, userId, startedAt, finishedAt, logFilePath, status, controllerKey, controllingSocketId, heartbeatAt)
-       VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, datetime('now'))`
+       (nodeId, userId, clientAddress, startedAt, finishedAt, logFilePath, status, controllerKey, controllingSocketId, heartbeatAt)
+       VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, datetime('now'))`
     );
     const result = stmt.run(
       data.nodeId,
       data.userId,
+      data.clientAddress || null,
       data.finishedAt || null,
       data.logFilePath || null,
       data.status,
@@ -54,6 +67,25 @@ export class TerminalSessionRepository extends BaseRepository {
 
   getById(id: number): TerminalSession | undefined {
     return this.prepare('SELECT * FROM terminalSessions WHERE id = ?').get(id) as TerminalSession | undefined;
+  }
+
+  getActiveLockInfoByNode(nodeId: number): ActiveTerminalLockInfo | undefined {
+    return this.prepare(
+      `SELECT
+         terminalSessions.id AS sessionId,
+         terminalSessions.nodeId,
+         terminalSessions.userId,
+         terminalSessions.clientAddress,
+         terminalSessions.startedAt,
+         terminalSessions.heartbeatAt,
+         users.name AS userName,
+         users.email AS userEmail
+       FROM terminalSessions
+       INNER JOIN users ON users.id = terminalSessions.userId
+       WHERE terminalSessions.nodeId = ? AND terminalSessions.status = 'active'
+       ORDER BY terminalSessions.startedAt DESC
+       LIMIT 1`
+    ).get(nodeId) as ActiveTerminalLockInfo | undefined;
   }
 
   touch(id: number): TerminalSession | undefined {

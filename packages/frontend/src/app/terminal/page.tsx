@@ -116,6 +116,16 @@ interface AIToolAction {
   createdAt: string;
 }
 
+interface TerminalLockInfo {
+  sessionId: number;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  clientAddress: string;
+  startedAt: string;
+  heartbeatAt?: string;
+}
+
 type DisplayMode = 'text' | 'hex' | 'mixed';
 
 const MAX_TERMINAL_CHUNKS = 250;
@@ -356,6 +366,7 @@ export default function TerminalPage() {
   const [transportState, setTransportState] = useState<string>('disconnected');
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [lockInfo, setLockInfo] = useState<TerminalLockInfo | null>(null);
   const [aiObservations, setAiObservations] = useState<AIObservation[]>([]);
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [copilotSuggestions, setCopilotSuggestions] = useState<AICopilotSuggestion[]>([]);
@@ -633,6 +644,7 @@ export default function TerminalPage() {
 
     socket.on('connect', () => {
       setLastError(null);
+      setLockInfo(null);
       pushLocalTrace({
         direction: 'inbound',
         type: 'control',
@@ -682,6 +694,7 @@ export default function TerminalPage() {
       setStatus('connected');
       setConnected(true);
       setLastError(null);
+      setLockInfo(null);
       pushLocalTrace({
         direction: 'inbound',
         type: 'control',
@@ -692,6 +705,7 @@ export default function TerminalPage() {
     socket.on('terminal:disconnected', () => {
       setStatus('disconnected');
       setConnected(false);
+      setLockInfo(null);
       pushLocalTrace({
         direction: 'inbound',
         type: 'control',
@@ -703,6 +717,7 @@ export default function TerminalPage() {
       setStatus('error');
       setConnected(false);
       setLastError(msg.error || 'Terminal error');
+      setLockInfo(null);
       pushLocalTrace({
         direction: 'inbound',
         type: 'control',
@@ -813,7 +828,8 @@ export default function TerminalPage() {
 
   const connectToNode = async () => {
     if (!selectedNodeId) {
-      setLastError('Select a node before connecting.');
+    setLastError('Select a node before connecting.');
+      setLockInfo(null);
       pushLocalTrace({
         direction: 'outbound',
         type: 'control',
@@ -825,6 +841,7 @@ export default function TerminalPage() {
 
     if (!socketRef.current?.connected) {
       setLastError('Realtime socket is not connected yet. Wait a moment and try again.');
+      setLockInfo(null);
       pushLocalTrace({
         direction: 'outbound',
         type: 'control',
@@ -835,6 +852,7 @@ export default function TerminalPage() {
     }
 
     setLastError(null);
+    setLockInfo(null);
     pushLocalTrace({
       direction: 'outbound',
       type: 'control',
@@ -852,12 +870,20 @@ export default function TerminalPage() {
       setConnected(false);
       const message = payload?.error || 'Failed to acquire terminal control';
       setLastError(message);
+      setLockInfo(payload?.lockInfo || null);
       termInstance.current?.write(`\r\n[${message}]\r\n`);
+      if (payload?.lockInfo) {
+        termInstance.current?.write(
+          `[locked by ${payload.lockInfo.userName} <${payload.lockInfo.userEmail}> from ${payload.lockInfo.clientAddress} since ${payload.lockInfo.startedAt}]\r\n`
+        );
+      }
       pushLocalTrace({
         direction: 'inbound',
         type: 'control',
         error: message,
-        message,
+        message: payload?.lockInfo
+          ? `${message} (locked by ${payload.lockInfo.userName} from ${payload.lockInfo.clientAddress})`
+          : message,
       });
       return;
     }
@@ -906,6 +932,7 @@ export default function TerminalPage() {
     setTransportState('disconnected');
     setSessionId(null);
     setLastError(null);
+    setLockInfo(null);
   };
 
   const sendCommand = (command: string) => {
@@ -1026,6 +1053,27 @@ export default function TerminalPage() {
             {lastError && (
               <div className="mt-3 rounded-2xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm text-red-100">
                 {lastError}
+              </div>
+            )}
+            {lockInfo && (
+              <div className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-500/10 px-3 py-3 text-sm text-amber-100">
+                <div className="font-medium text-amber-50">Current controller</div>
+                <div className="mt-2 space-y-1 text-amber-100/90">
+                  <div>
+                    User: <span className="text-amber-50">{lockInfo.userName}</span> ({lockInfo.userEmail})
+                  </div>
+                  <div>
+                    IP: <span className="text-amber-50">{lockInfo.clientAddress}</span>
+                  </div>
+                  <div>
+                    Since: <span className="text-amber-50">{lockInfo.startedAt}</span>
+                  </div>
+                  {lockInfo.heartbeatAt && (
+                    <div>
+                      Last heartbeat: <span className="text-amber-50">{lockInfo.heartbeatAt}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

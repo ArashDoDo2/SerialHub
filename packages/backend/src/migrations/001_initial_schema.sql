@@ -84,6 +84,7 @@ CREATE TABLE terminalSessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nodeId INTEGER NOT NULL,
     userId INTEGER NOT NULL,
+    clientAddress TEXT,
     startedAt TEXT NOT NULL DEFAULT (datetime('now')),
     finishedAt TEXT,
     logFilePath TEXT,

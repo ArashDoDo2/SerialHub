@@ -96,6 +96,9 @@ function handleTerminalSocketBindingMigration(db: ReturnType<typeof getDatabase>
   if (!hasColumn(db, 'terminalSessions', 'controllingSocketId')) {
     db.exec(`ALTER TABLE terminalSessions ADD COLUMN controllingSocketId TEXT`);
   }
+  if (!hasColumn(db, 'terminalSessions', 'clientAddress')) {
+    db.exec(`ALTER TABLE terminalSessions ADD COLUMN clientAddress TEXT`);
+  }
 }
 
 export function runMigrations(): void {

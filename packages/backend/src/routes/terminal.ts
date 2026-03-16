@@ -37,7 +37,12 @@ router.post('/start', async (req: Request, res: Response) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
   try {
-    const session = terminalSessionService.acquire(parsed.data.nodeId, userId, parsed.data.controllerKey);
+    const session = terminalSessionService.acquireWithContext(
+      parsed.data.nodeId,
+      userId,
+      parsed.data.controllerKey,
+      req.ip
+    );
     await mgr.openConnection(parsed.data.nodeId);
     aiObserverService.startTerminalSession({
       terminalSessionId: session.id,
@@ -57,7 +62,25 @@ router.post('/start', async (req: Request, res: Response) => {
       { nodeId: parsed.data.nodeId, userId, controllerKey: parsed.data.controllerKey, err: error },
       'Terminal session start failed'
     );
-    return res.status(409).json({ error: error instanceof Error ? error.message : 'Failed to start terminal session' });
+    const message = error instanceof Error ? error.message : 'Failed to start terminal session';
+    const lockInfo =
+      message === 'Node is already controlled by another active session'
+        ? terminalSessionService.getActiveLockInfo(parsed.data.nodeId)
+        : undefined;
+    return res.status(409).json({
+      error: message,
+      lockInfo: lockInfo
+        ? {
+            sessionId: lockInfo.sessionId,
+            userId: lockInfo.userId,
+            userName: lockInfo.userName,
+            userEmail: lockInfo.userEmail,
+            clientAddress: lockInfo.clientAddress || 'unknown',
+            startedAt: lockInfo.startedAt,
+            heartbeatAt: lockInfo.heartbeatAt,
+          }
+        : undefined,
+    });
   }
 });
 

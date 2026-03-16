@@ -33,6 +33,31 @@ export class TerminalSessionService {
     });
   }
 
+  acquireWithContext(nodeId: number, userId: number, controllerKey: string, clientAddress?: string) {
+    this.cleanupExpired();
+    const existingForController = this.repo.getActiveByController(controllerKey);
+    if (existingForController) {
+      if (existingForController.nodeId !== nodeId) {
+        throw new Error('Controller is already attached to another node');
+      }
+      this.repo.touch(existingForController.id);
+      return existingForController;
+    }
+
+    const active = this.repo.getActiveByNode(nodeId);
+    if (active) {
+      throw new Error('Node is already controlled by another active session');
+    }
+
+    return this.repo.create({
+      nodeId,
+      userId,
+      status: 'active',
+      controllerKey,
+      clientAddress,
+    });
+  }
+
   release(controllerKey: string, status: 'closed' | 'error' = 'closed'): void {
     this.repo.closeByController(controllerKey, status);
   }
@@ -40,6 +65,11 @@ export class TerminalSessionService {
   getActiveByController(controllerKey: string) {
     this.cleanupExpired();
     return this.repo.getActiveByController(controllerKey);
+  }
+
+  getActiveLockInfo(nodeId: number) {
+    this.cleanupExpired();
+    return this.repo.getActiveLockInfoByNode(nodeId);
   }
 
   ensureAvailableForScript(nodeId: number): void {
