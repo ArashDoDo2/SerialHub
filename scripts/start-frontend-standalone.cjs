@@ -27,33 +27,85 @@ if (!serverPath) {
 
 const publicHost = process.env.HOSTNAME || '0.0.0.0';
 const publicPort = Number(process.env.PORT || 3000);
-const internalFrontendPort = Number(process.env.SERIALHUB_INTERNAL_FRONTEND_PORT || 3100);
+const internalFrontendPortBase = Number(process.env.SERIALHUB_INTERNAL_FRONTEND_PORT || 3100);
 const backendTarget = new URL(process.env.SERIALHUB_BACKEND_TARGET || 'http://127.0.0.1:3001');
-const frontendTarget = new URL(`http://127.0.0.1:${internalFrontendPort}`);
+const childPidFile = path.join(repoDir, 'packages', 'frontend', '.next', 'standalone', '.serialhub-frontend-child.pid');
 
-const child = spawn(process.execPath, [serverPath], {
-  stdio: 'inherit',
-  cwd: path.dirname(serverPath),
-  env: {
-    ...process.env,
-    HOSTNAME: '127.0.0.1',
-    PORT: String(internalFrontendPort),
-  },
-});
+let frontendTarget;
+let child;
 
-child.on('exit', (code, signal) => {
-  if (signal) {
-    process.kill(process.pid, signal);
+function isProcessAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readTrackedChildPid() {
+  if (!fs.existsSync(childPidFile)) {
+    return null;
+  }
+
+  const rawPid = fs.readFileSync(childPidFile, 'utf8').trim();
+  const pid = Number(rawPid);
+  return Number.isInteger(pid) && pid > 0 ? pid : null;
+}
+
+function removeTrackedChildPid() {
+  if (fs.existsSync(childPidFile)) {
+    fs.rmSync(childPidFile, { force: true });
+  }
+}
+
+async function stopTrackedChildIfPresent() {
+  const trackedPid = readTrackedChildPid();
+  if (!trackedPid) {
     return;
   }
 
-  process.exit(code ?? 0);
-});
+  if (!isProcessAlive(trackedPid)) {
+    removeTrackedChildPid();
+    return;
+  }
 
-child.on('error', (error) => {
-  console.error(`Failed to start standalone frontend server: ${error.message}`);
-  process.exit(1);
-});
+  process.kill(trackedPid, 'SIGTERM');
+
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    if (!isProcessAlive(trackedPid)) {
+      removeTrackedChildPid();
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  process.kill(trackedPid, 'SIGKILL');
+  removeTrackedChildPid();
+}
+
+function findAvailablePort(startPort, host) {
+  return new Promise((resolve, reject) => {
+    const tryPort = (port) => {
+      const tester = net.createServer();
+      tester.unref();
+      tester.once('error', (error) => {
+        if (error && error.code === 'EADDRINUSE') {
+          tryPort(port + 1);
+          return;
+        }
+        reject(error);
+      });
+      tester.once('listening', () => {
+        tester.close(() => resolve(port));
+      });
+      tester.listen(port, host);
+    };
+
+    tryPort(startPort);
+  });
+}
 
 function isBackendPath(requestUrl = '/') {
   try {
@@ -146,16 +198,78 @@ proxyServer.on('clientError', (error, socket) => {
   console.error(`Standalone frontend proxy client error: ${error.message}`);
 });
 
-proxyServer.listen(publicPort, publicHost, () => {
-  console.log(
-    `SerialHub standalone gateway listening on http://${publicHost}:${publicPort} (frontend -> ${frontendTarget.href}, backend -> ${backendTarget.href})`
-  );
-});
+let shuttingDown = false;
+
+function shutdown(signal = 'SIGTERM') {
+  if (shuttingDown) {
+    return;
+  }
+  shuttingDown = true;
+
+  proxyServer.close(() => {
+    if (child && !child.killed) {
+      child.kill(signal);
+    }
+    removeTrackedChildPid();
+  });
+}
+
+async function main() {
+  await stopTrackedChildIfPresent();
+
+  const selectedInternalPort = await findAvailablePort(internalFrontendPortBase, '127.0.0.1');
+  frontendTarget = new URL(`http://127.0.0.1:${selectedInternalPort}`);
+
+  child = spawn(process.execPath, [serverPath], {
+    stdio: 'inherit',
+    cwd: path.dirname(serverPath),
+    env: {
+      ...process.env,
+      HOSTNAME: '127.0.0.1',
+      PORT: String(selectedInternalPort),
+    },
+  });
+
+  fs.writeFileSync(childPidFile, `${child.pid}\n`, 'utf8');
+
+  child.on('exit', (code, signal) => {
+    removeTrackedChildPid();
+    if (shuttingDown) {
+      process.exit(code ?? 0);
+      return;
+    }
+    if (signal) {
+      process.kill(process.pid, signal);
+      return;
+    }
+
+    process.exit(code ?? 0);
+  });
+
+  child.on('error', (error) => {
+    removeTrackedChildPid();
+    console.error(`Failed to start standalone frontend server: ${error.message}`);
+    process.exit(1);
+  });
+
+  proxyServer.listen(publicPort, publicHost, () => {
+    console.log(
+      `SerialHub standalone gateway listening on http://${publicHost}:${publicPort} (frontend -> ${frontendTarget.href}, backend -> ${backendTarget.href})`
+    );
+  });
+}
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
-    proxyServer.close(() => {
-      child.kill(signal);
-    });
+    shutdown(signal);
   });
 }
+
+process.on('exit', () => {
+  removeTrackedChildPid();
+});
+
+main().catch((error) => {
+  console.error(`Failed to start standalone frontend gateway: ${error.message}`);
+  process.exit(1);
+});

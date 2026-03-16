@@ -64,6 +64,8 @@ The script builds the standalone frontend against `http://127.0.0.1:3001` by def
 
 In the PM2 standalone deployment, browsers should only need the frontend origin. The standalone launcher exposes a single public port and proxies page requests, `/api/*`, and `/socket.io/*` to the internal Next.js and backend processes.
 
+The standalone launcher also cleans up its tracked internal Next.js child process on restart and can move that internal listener to the next free loopback port if a stale child is still holding the previous port.
+
 To force a specific public hostname or domain:
 
 ```bash
